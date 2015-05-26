@@ -1,0 +1,20 @@
+# permit host=dkv0000pha01630.dkv.cd.cz/10.8.6.244 use of gateway (V2.1)
+# deny host=dkv0000pha01630.dkv.cd.cz/10.8.6.244 connect to 23.63.92.245
+# exit host=dkv0000pha01630.dkv.cd.cz/10.8.6.244 cmds=1 in=0 out=0 user=unauth duration=0
+# connect host=cdis000phaux284.cdis.cz/10.4.60.40 destination=77.93.215.183/443
+STATE (permit|connect|deny|exit|disconnect|log)
+DST_IP_HOST_PORT (%{IP:dst_ip}|%{HOSTNAME:dst_host})(?:/%{INT:dst_port})?
+# log host=unknown/10.4.64.151 protocol=HTTP cmd=get dest=www.mpvnet.cz path=/pid/x/33311
+LOG protocol=%{WORD:protocol} cmd=%{WORD:cmd} dest=%{DST_IP_HOST_PORT} path=%{GREEDYDATA:path}
+TRACKING %{STATE:state} host=%{HOSTNAME:src_host}/%{IP:src_ip}(?: (connect to %{DST_IP_HOST_PORT}|destination=%{DST_IP_HOST_PORT}|%{LOG}))?
+
+# securityalert: possible spoof 0.155.174.46.mjanik.net/46.174.155.0 != 89.185.232.140 name lookup mismatch
+ALERT1 %{HOSTNAME:src_host}/%{IP:src_ip} != %{IP:dns_ip} name lookup mismatch
+# securityalert: possible spoof - DNS lookup for address 10.96.8.61 gives name sdc0000hkr00004.sdc.szdc.cz but the reverse lookup is 10.96.25.133
+ALERT2 - (?<extended_msg>DNS lookup for address) %{IP:lookup_ip} gives name %{HOSTNAME:dns_name} but the reverse lookup is %{IP:reverse_ip}
+SHORT_MSG possible spoof
+ALERT %{WORD:alerttype}: %{SHORT_MSG:short_msg} (?:%{ALERT1}|%{ALERT2})
+
+
+PLUGGW ... .. ..:..:.. %{HOSTNAME:host} %{HOSTNAME:prog}\[%{INT}\]: (?:%{TRACKING}|%{ALERT}|%{LOG})
+

@@ -1,0 +1,6 @@
+#[116:419:1] snort_decoder: WARNING: TCP urgent pointer exceeds payload length or no payload [Classification: Misc activity] [Priority: 3]: <em1> {TCP} 10.20.220.247:62955 -> 10.12.20.142:389\u0000
+#[122:1:1] portscan: TCP Portscan [Classification: Attempted Information Leak] [Priority: 2]: <em1> {PROTO:255} 10.12.2.136 -> 10.12.20.138
+SOURCERULE %{INT}:%{INT}:%{INT}
+
+SNORT \[%{SOURCERULE:source_rule}\] (?<snort_msg>[^\[]+) \[Classification: (?<class>[^\]]+)\] \[Priority: %{INT:priority}\]: <%{NOTSPACE}> \{%{NOTSPACE:protocol}\} %{IP:src_ip}(?::%{INT:src_port})? -> %{IP:dst_ip}(?::%{INT:dst_port})?
+

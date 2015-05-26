@@ -1,0 +1,54 @@
+# Postfix stuff based on https://gist.github.com/jbrownsc/4694374:
+
+QUEUEID (?:[A-F0-9]+|NOQUEUE)
+EMAILADDRESSPART [a-zA-Z0-9_.+-=:$%]+
+EMAILADDRESS %{EMAILADDRESSPART:local}@%{EMAILADDRESSPART:remote}
+RELAY (?:(%{HOSTNAME:relayhost}|%{IP:relayhost})(?:\[%{IP:relayip}\](?::[0-9]+(.[0-9]+)?)?)?)
+POSREAL [+-]?[0-9]+(\.[0-9]+)?
+DELAYS (%{POSREAL}[/]*)+
+DSN %{NONNEGINT}.%{NONNEGINT}.%{NONNEGINT}
+STATUS sent|deferred|bounced|expired
+PERMERROR 5[0-9]{2}
+MESSAGELEVEL reject|warning|error|fatal|panic
+POSTFIXACTION discard|dunno|filter|hold|ignore|info|prepend|redirect|replace|reject|warn
+YESNO Yes|No
+WORDS %{WORD}(,%{WORD})*
+
+# postfix/smtp and postfix/lmtp and postfix/local
+POSTFIXSMTPRELAY %{QUEUEID:qas}: to=<%{EMAILADDRESS:to}>,(?:\sorig_to=<%{EMAILADDRESS:orig_to}>,)? relay=%{RELAY}(, conn_use=%{POSINT})?, delay=%{POSREAL:delay}, delays=%{DELAYS:delays}, dsn=%{DSN:dsn}, status=%{STATUS:result} \(%{DATA:reason}\)
+POSTFIXSMTPCONNECT connect to %{RELAY}: %{GREEDYDATA:reason}
+POSTFIXSMTP4XX %{QUEUEID:qas}: host %{RELAY} said: %{GREEDYDATA:reason}
+POSTFIXSMTP5XX %{QUEUEID:qas}: to=<%{EMAILADDRESS:to}>,(?:\sorig_to=<%{EMAILADDRESS:orig_to}>,)? relay=%{RELAY}, delay=%{POSREAL:delay}, delays=%{DELAYS:delays}, dsn=%{DSN:dsn}, status=%{STATUS:result} \(host %{HOSTNAME}\[%{IP}\] said: %{PERMERROR:responsecode} %{DATA:smtp_response} \(in reply to %{DATA:command} command\)\)
+POSTFIXSMTPREFUSAL %{QUEUEID:qas}: host %{RELAY} refused to talk to me: %{GREEDYDATA:reason}
+POSTFIXSMTPLOSTCONNECTION %{QUEUEID:qas}: lost connection with %{RELAY} while %{GREEDYDATA:reason}
+POSTFIXSMTPTIMEOUT %{QUEUEID:qas}: conversation with %{RELAY} timed out while %{GREEDYDATA:reason}
+ 
+# postfix/smtpd
+#POSTFIXSMTPDCONNECTS (?:dis)?connect from %{RELAY}
+#POSTFIXSMTPDACTIONS %{QUEUEID:qas}: %{POSTFIXACTION}: %{DATA:command} from %{RELAY}: %{DATA:smtp_response}: %{DATA:reason}; from=<%{EMAILADDRESS:from}> to=<%{EMAILADDRESS:to}> proto=%{DATA:proto} helo=<%{IPORHOST}>
+#POSTFIXSMTPDTIMEOUTS timeout after %{DATA:command} from %{RELAY}
+#POSTFIXSMTPDLOGIN %{QUEUEID:qas}: client=%{DATA:client}, sasl_method=%{DATA:saslmethod}, sasl_username=%{EMAILADDRESS:saslusername}
+#POSTFIXSMTPDCLIENT %{QUEUEID:qas}: client=%{DATA:client}
+
+# postfix/cleanup
+POSTFIXCLEANUP %{QUEUEID:qas}: message-id=<%{EMAILADDRESS:messageid}>
+ 
+# postfix/bounce
+POSTFIXBOUNCE %{QUEUEID:qas}: sender non-delivery notification: %{QUEUEID:bouncequeueid}
+ 
+# postfix/qmgr and postfix/pickup
+POSTFIXQMGR %{QUEUEID:qas}: (?:removed|from=<(?:%{EMAILADDRESS:from})?>(?:, size=%{POSINT:size}, nrcpt=%{POSINT:nrcpt} \(%{GREEDYDATA:queuestatus}\))?)
+
+# amavis
+AMAVISID (?:[0-9]+-[0-9]+(-[0-9]+)?)
+AMAVISRESULT (Passed|Blocked) %{NOTSPACE}
+AMAVISTESTSRESULT %{WORD}=%{POSREAL}
+AMAVISTESTSRESULTS %{AMAVISTESTSRESULT}(?:, %{AMAVISTESTSRESULT})*
+
+AMAVISTESTS spam-tag, <%{EMAILADDRESS:from}?> -> <%{EMAILADDRESS:to}>(,<%{EMAILADDRESS:to}>)*, %{YESNO:spam-tag}, score=%{POSREAL:score:float} tagged_above=%{INT} required=%{POSREAL} tests=\[%{AMAVISTESTSRESULTS:avtests-full}\] autolearn=%{WORD} autolearn_force=%{WORD}
+
+AMAVISSHORT %{AMAVISRESULT:amavisresult}( \(%{NOTSPACE:infectedfile}\))? {%{WORDS:amavisaction}},( \[%{IP:relayhost}\]:[0-9]+ \[%{IP:fromhost}\])? <%{EMAILADDRESS:from}?> -> <%{EMAILADDRESS:to}>(,<%{EMAILADDRESS:to}>)*(, quarantine: %{NOTSPACE})?(, Queue-ID: %{QUEUEID:qid})?, Message-ID: <(?<messageid>[\S ]+)>(, Resent-Message-ID: <%{NOTSPACE}>)?, mail_id: %{NOTSPACE}, Hits: (%{POSREAL:hits:float}|-), size: %{INT:size:int}(, queued_as: %{QUEUEID:qas})?(, dkim_sd=%{NOTSPACE:dkimsd})?, %{INT:timedelta:int} ms
+
+AMAVIS (Forwarded from %{SYSLOGHOST:host}: )?amavis\[%{POSINT}\]: \(%{AMAVISID:aid}\) (%{AMAVISSHORT}|%{AMAVISTESTS})
+#AMAVIS (Forwarded from %{SYSLOGHOST:host}: )?amavis\[%{POSINT}\]: \(%{AMAVISID:aid}\) %{AMAVISTESTS}
+

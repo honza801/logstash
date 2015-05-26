@@ -1,0 +1,6 @@
+QMAILPROGRAM (qmail|qmail-scanner)
+QMAILSCANNER <\d+>%{QMAILPROGRAM:syslog_program}(?:\[%{POSINT:syslog_pid}\])?: %{NOTSPACE}\(%{IPV4:smtphost}\)(%{NOTSPACE})? %{NOTSPACE} %{INT:size:int} %{EMAILADDRESS:from} %{EMAILADDRESS:to} %{GREEDYDATA}
+QMAILINFO <\d+>%{QMAILPROGRAM:syslog_program}(?:\[%{POSINT:syslog_pid}\])?: %{POSREAL} info msg %{INT:msgid}: bytes %{INT:size:int} from <%{EMAILADDRESS:from}> %{GREEDYDATA}
+QMAILDELIVERY <\d+>%{QMAILPROGRAM:syslog_program}(?:\[%{POSINT:syslog_pid}\])?: %{POSREAL} starting delivery %{INT:did}: msg %{INT:msgid} to (local|remote) %{EMAILADDRESS:to}
+QMAIL (%{QMAILSCANNER}|%{QMAILINFO}|%{QMAILDELIVERY})
+

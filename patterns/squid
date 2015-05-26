@@ -1,0 +1,5 @@
+# https://gist.github.com/sakalajuraj/6339942
+SRC_IP_HOST (%{IP:src_ip}|%{HOSTNAME:src_host})
+DST_IP_HOST (%{IP:dst_ip}|%{HOSTNAME:dst_host})
+SQUID %{NUMBER:timestamp} \s+ %{NUMBER:request_msec:float} %{SRC_IP_HOST} %{WORD:cache_result}/%{NUMBER:response_status:int} %{NUMBER:response_size:int} %{WORD:http_method} (%{URIPROTO:http_proto}://)?%{DST_IP_HOST}(?::%{POSINT:port})?(?:%{URIPATHPARAM:uri_param})? %{USERNAME:cache_user} %{WORD:request_route}/(%{IPORHOST:forwarded_to}|-) %{GREEDYDATA:content_type}
+
