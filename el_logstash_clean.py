@@ -2,11 +2,14 @@
 
 # Deletes data from logstash older than 40 days
 
+import os.path
 from elasticsearch import Elasticsearch
 import re
 from datetime import date, datetime, timedelta
 import logging
-logging.basicConfig(format='%(asctime)s %(message)s', filename=__file__+'.log', level=logging.INFO)
+
+log_filename = '/var/log/'+os.path.basename(__file__)+'.log'
+logging.basicConfig(format='%(asctime)s %(message)s', filename=log_filename, level=logging.INFO)
 
 es = Elasticsearch()
 logstash_pattern = re.compile('logstash-(\d+\.\d+\.\d+)')
